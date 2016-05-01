@@ -31,6 +31,8 @@ struct ovl_config {
 	char *upperdir;
 	char *workdir;
 	bool default_permissions;
+	bool vfs_shift_uids;
+	bool vfs_shift_gids;
 };
 
 /* private information held for overlayfs's superblock */
@@ -652,6 +654,10 @@ static int ovl_show_options(struct seq_file *m, struct dentry *dentry)
 	}
 	if (ufs->config.default_permissions)
 		seq_puts(m, ",default_permissions");
+	if (ufs->config.vfs_shift_uids)
+		seq_puts(m, ",vfs_shift_uids");
+	if (ufs->config.vfs_shift_gids)
+		seq_puts(m, ",vfs_shift_gids");
 	return 0;
 }
 
@@ -677,6 +683,8 @@ enum {
 	OPT_UPPERDIR,
 	OPT_WORKDIR,
 	OPT_DEFAULT_PERMISSIONS,
+	OPT_VFS_SHIFT_UIDS,
+	OPT_VFS_SHIFT_GIDS,
 	OPT_ERR,
 };
 
@@ -685,6 +693,8 @@ static const match_table_t ovl_tokens = {
 	{OPT_UPPERDIR,			"upperdir=%s"},
 	{OPT_WORKDIR,			"workdir=%s"},
 	{OPT_DEFAULT_PERMISSIONS,	"default_permissions"},
+	{OPT_VFS_SHIFT_UIDS,		"vfs_shift_uids"},
+	{OPT_VFS_SHIFT_GIDS,		"vfs_shift_gids"},
 	{OPT_ERR,			NULL}
 };
 
@@ -747,6 +757,14 @@ static int ovl_parse_opt(char *opt, struct ovl_config *config)
 
 		case OPT_DEFAULT_PERMISSIONS:
 			config->default_permissions = true;
+			break;
+
+		case OPT_VFS_SHIFT_UIDS:
+			config->vfs_shift_uids = true;
+			break;
+
+		case OPT_VFS_SHIFT_GIDS:
+			config->vfs_shift_gids = true;
 			break;
 
 		default:
@@ -1104,6 +1122,13 @@ static int ovl_fill_super(struct super_block *sb, void *data, int silent)
 	/* If the upper fs is nonexistent, we mark overlayfs r/o too */
 	if (!ufs->upper_mnt)
 		sb->s_flags |= MS_RDONLY;
+
+	/* Allow overlayfs to shift UIDs and GIDs */
+	if (ufs->config.vfs_shift_uids)
+		sb->s_iflags |= SB_I_VFS_SHIFT_UIDS;
+
+	if (ufs->config.vfs_shift_gids)
+		sb->s_iflags |= SB_I_VFS_SHIFT_GIDS;
 
 	if (remote)
 		sb->s_d_op = &ovl_reval_dentry_operations;

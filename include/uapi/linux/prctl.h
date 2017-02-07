@@ -197,4 +197,8 @@ struct prctl_mm_map {
 # define PR_CAP_AMBIENT_LOWER		3
 # define PR_CAP_AMBIENT_CLEAR_ALL	4
 
+/* Per process, access permissions on pid through /proc/pid API */
+#define PR_SET_NO_FS_PID_ACCESS 48
+#define PR_GET_NO_FS_PID_ACCESS 49
+
 #endif /* _LINUX_PRCTL_H */

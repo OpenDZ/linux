@@ -2261,6 +2261,16 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	case PR_GET_FP_MODE:
 		error = GET_FP_MODE(me);
 		break;
+	case PR_SET_NO_FS_PID_ACCESS:
+		if (arg2 != 1 || arg3 || arg4 || arg5)
+			return -EINVAL;
+
+		task_set_no_fs_pid_access(current);
+		break;
+	case PR_GET_NO_FS_PID_ACCESS:
+		if (arg2 || arg3 || arg4 || arg5)
+			return -EINVAL;
+		return task_no_fs_pid_access(current) ? 1 : 0;
 	default:
 		error = -EINVAL;
 		break;

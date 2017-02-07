@@ -343,6 +343,7 @@ static inline void task_cap(struct seq_file *m, struct task_struct *p)
 static inline void task_seccomp(struct seq_file *m, struct task_struct *p)
 {
 	seq_put_decimal_ull(m, "NoNewPrivs:\t", task_no_new_privs(p));
+	seq_put_decimal_ull(m, "NoFSPidAccess:\t", task_no_fs_pid_access(p));
 #ifdef CONFIG_SECCOMP
 	seq_put_decimal_ull(m, "\nSeccomp:\t", p->seccomp.mode);
 #endif

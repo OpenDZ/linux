@@ -2382,6 +2382,7 @@ static inline void memalloc_noio_restore(unsigned int flags)
 #define PFA_SPREAD_PAGE  1      /* Spread page cache over cpuset */
 #define PFA_SPREAD_SLAB  2      /* Spread some slab caches over cpuset */
 #define PFA_LMK_WAITING  3      /* Lowmemorykiller is waiting */
+#define PFA_PIDFS_PTRACE_FSCREDS  4    /* Perform a PTRACE_MODE_FSCREDS access check on pid to access its /proc/pid/ API */
 
 
 #define TASK_PFA_TEST(name, func)					\
@@ -2407,6 +2408,9 @@ TASK_PFA_CLEAR(SPREAD_SLAB, spread_slab)
 
 TASK_PFA_TEST(LMK_WAITING, lmk_waiting)
 TASK_PFA_SET(LMK_WAITING, lmk_waiting)
+
+TASK_PFA_TEST(PIDFS_PTRACE_FSCREDS, pidfs_ptrace_fscreds)
+TASK_PFA_SET(PIDFS_PTRACE_FSCREDS, pidfs_ptrace_fscreds)
 
 /*
  * task->jobctl flags

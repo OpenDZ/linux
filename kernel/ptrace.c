@@ -1172,6 +1172,24 @@ int generic_ptrace_pokedata(struct task_struct *tsk, unsigned long addr,
 	return (copied == sizeof(data)) ? 0 : -EIO;
 }
 
+int task_set_pid_fs_pid_access(struct task_struct *tsk)
+{
+	/*
+	 * To install the PFA_PIDFS_PTRACE_FSCREDS flag, the task must
+	 * be running with no_new_privs set or already has CAP_SYS_PTRACE
+	 * in its namespace.
+	 * This avoids scenarios where unprivileged tasks may
+	 * invoke a set-user-ID or other privileged programs using execve,
+	 * to potentially pass the ptrace PTRACE_MODE_FSCREDS check.
+	 */
+	if (!task_no_new_privs(tsk) &&
+	    !ptrace_has_cap(current_user_ns(), PTRACE_MODE_NOAUDIT))
+		return -EACCES;
+
+	task_set_pidfs_ptrace_fscreds(tsk);
+	return 0;
+}
+
 #if defined CONFIG_COMPAT
 
 int compat_ptrace_request(struct task_struct *child, compat_long_t request,

@@ -197,4 +197,8 @@ struct prctl_mm_map {
 # define PR_CAP_AMBIENT_LOWER		3
 # define PR_CAP_AMBIENT_CLEAR_ALL	4
 
+/* Require a PTRACE_MODE_FSCREDS check on pid to access its /proc/pid/ API */
+#define PR_SET_PIDFS_PTRACE_FSCREDS	48
+#define PR_GET_PIDFS_PTRACE_FSCREDS	49
+
 #endif /* _LINUX_PRCTL_H */

@@ -100,6 +100,8 @@ int generic_ptrace_peekdata(struct task_struct *tsk, unsigned long addr,
 int generic_ptrace_pokedata(struct task_struct *tsk, unsigned long addr,
 			    unsigned long data);
 
+int task_set_pid_fs_pid_access(struct task_struct *tsk);
+
 /**
  * ptrace_parent - return the task that is tracing the given task
  * @task: task to consider

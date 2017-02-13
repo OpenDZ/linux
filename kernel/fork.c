@@ -1761,6 +1761,9 @@ static __latent_entropy struct task_struct *copy_process(
 		p->parent_exec_id = current->self_exec_id;
 	}
 
+	if (task_pidfs_ptrace_fscreds(current))
+		task_set_pidfs_ptrace_fscreds(p);
+
 	spin_lock(&current->sighand->siglock);
 
 	/*

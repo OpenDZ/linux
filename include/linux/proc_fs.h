@@ -6,10 +6,26 @@
 
 #include <linux/types.h>
 #include <linux/fs.h>
+#include <linux/refcount.h>
+
+enum {
+	PROC_FS_V1	= 1,
+	PROC_FS_V2	= 2,
+};
+
+struct proc_fs_info {
+	refcount_t users;
+	struct pid_namespace *pid_ns;
+	kgid_t pid_gid;
+	int hide_pid;
+	int version;
+};
 
 struct proc_dir_entry;
 
 #ifdef CONFIG_PROC_FS
+
+extern struct proc_fs_info *proc_sb(struct super_block *sb);
 
 extern void proc_root_init(void);
 extern void proc_flush_task(struct task_struct *);
@@ -53,6 +69,7 @@ static inline void proc_flush_task(struct task_struct *task)
 {
 }
 
+extern inline struct proc_fs_info *proc_sb(struct super_block *sb) { return NULL;}
 static inline struct proc_dir_entry *proc_symlink(const char *name,
 		struct proc_dir_entry *parent,const char *dest) { return NULL;}
 static inline struct proc_dir_entry *proc_mkdir(const char *name,

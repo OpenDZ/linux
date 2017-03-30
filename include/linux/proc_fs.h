@@ -9,8 +9,8 @@
 #include <linux/refcount.h>
 
 enum {
-	PROC_FS_V1	= 1,
-	PROC_FS_V2	= 2,
+	PROC_FS_V1	= 1, /* Inside same pidns procfs mounts are shared */
+	PROC_FS_V2	= 2, /* New procfs mounts are separated by default */
 };
 
 struct proc_fs_info {
@@ -27,6 +27,13 @@ struct proc_dir_entry;
 
 extern struct proc_fs_info *proc_sb(struct super_block *sb);
 
+extern void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_pid);
+
+extern void proc_fs_set_pid_gid(struct proc_fs_info *fs_info, kgid_t gid);
+
+extern int proc_fs_get_hide_pid(struct proc_fs_info *fs_info);
+extern kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info);
+
 extern void proc_root_init(void);
 extern void proc_flush_task(struct task_struct *);
 
@@ -38,7 +45,7 @@ extern struct proc_dir_entry *proc_mkdir_data(const char *, umode_t,
 extern struct proc_dir_entry *proc_mkdir_mode(const char *, umode_t,
 					      struct proc_dir_entry *);
 struct proc_dir_entry *proc_create_mount_point(const char *name);
- 
+
 extern struct proc_dir_entry *proc_create_data(const char *, umode_t,
 					       struct proc_dir_entry *,
 					       const struct file_operations *,
@@ -67,6 +74,28 @@ static inline void proc_root_init(void)
 
 static inline void proc_flush_task(struct task_struct *task)
 {
+}
+
+static inline void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_pid)
+{
+}
+
+static inline void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_pid)
+{
+}
+
+static inline void proc_fs_set_pid_gid(struct proc_info_fs *fs_info, kgid_t gid)
+{
+}
+
+static inline int proc_fs_get_hide_pid(struct proc_fs_info *fs_info)
+{
+	return 0;
+}
+
+extern kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info)
+{
+	return GLOBAL_ROOT_GID;
 }
 
 extern inline struct proc_fs_info *proc_sb(struct super_block *sb) { return NULL;}

@@ -16,6 +16,7 @@
 #include <linux/module.h>
 #include <linux/slab.h>
 #include <linux/printk.h>
+#include <linux/pid_namespace.h>
 #include <linux/mount.h>
 #include <linux/init.h>
 #include <linux/idr.h>
@@ -31,6 +32,42 @@ static DEFINE_RWLOCK(proc_subdir_lock);
 struct proc_fs_info *proc_sb(struct super_block *sb)
 {
 	return sb->s_fs_info;
+}
+
+void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_pid)
+{
+	/* For backward compatibility */
+	if (fs_info->version == PROC_FS_V1)
+		fs_info->pid_ns->hide_pid = hide_pid;
+	else if (fs_info->version == PROC_FS_V2)
+		fs_info->hide_pid = hide_pid;
+}
+
+void proc_fs_set_pid_gid(struct proc_fs_info *fs_info, kgid_t gid)
+{
+	/* For backward compatibility */
+	if (fs_info->version == PROC_FS_V1)
+		fs_info->pid_ns->pid_gid = gid;
+	else if (fs_info->version == PROC_FS_V2)
+		fs_info->pid_gid = gid;
+}
+
+int proc_fs_get_hide_pid(struct proc_fs_info *fs_info)
+{
+	/* For backward compatibility */
+	if (fs_info->version == PROC_FS_V1)
+		return fs_info->pid_ns->hide_pid;
+
+	return fs_info->hide_pid;
+}
+
+kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info)
+{
+	/* For backward compatibility */
+	if (fs_info->version == PROC_FS_V1)
+		return fs_info->pid_ns->pid_gid;
+
+	return fs_info->pid_gid;
 }
 
 static int proc_match(unsigned int len, const char *name, struct proc_dir_entry *de)

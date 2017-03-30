@@ -31,8 +31,11 @@ extern void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_pid);
 
 extern void proc_fs_set_pid_gid(struct proc_fs_info *fs_info, kgid_t gid);
 
+extern void proc_fs_set_unshare(struct proc_fs_info *fs_info, int version);
+
 extern int proc_fs_get_hide_pid(struct proc_fs_info *fs_info);
 extern kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info);
+extern int proc_fs_get_unshare(struct proc_fs_info *fs_info);
 
 extern void proc_root_init(void);
 extern void proc_flush_task(struct task_struct *);
@@ -84,6 +87,10 @@ static inline void proc_fs_set_hide_pid(struct proc_fs_info *fs_info, int hide_p
 {
 }
 
+static inline void proc_fs_set_unshare(struct proc_fs_info *fs_info, int version)
+{
+}
+
 static inline void proc_fs_set_pid_gid(struct proc_info_fs *fs_info, kgid_t gid)
 {
 }
@@ -96,6 +103,11 @@ static inline int proc_fs_get_hide_pid(struct proc_fs_info *fs_info)
 extern kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info)
 {
 	return GLOBAL_ROOT_GID;
+}
+
+static inline int proc_fs_get_unshare(struct proc_fs_info *fs_info)
+{
+	return PROC_FS_V1;
 }
 
 extern inline struct proc_fs_info *proc_sb(struct super_block *sb) { return NULL;}

@@ -52,6 +52,11 @@ void proc_fs_set_pid_gid(struct proc_fs_info *fs_info, kgid_t gid)
 		fs_info->pid_gid = gid;
 }
 
+void proc_fs_set_unshare(struct proc_fs_info *fs_info, int version)
+{
+	fs_info->version = version;
+}
+
 int proc_fs_get_hide_pid(struct proc_fs_info *fs_info)
 {
 	/* For backward compatibility */
@@ -68,6 +73,11 @@ kgid_t proc_fs_get_pid_gid(struct proc_fs_info *fs_info)
 		return fs_info->pid_ns->pid_gid;
 
 	return fs_info->pid_gid;
+}
+
+int proc_fs_get_unshare(struct proc_fs_info *fs_info)
+{
+	return fs_info->version;
 }
 
 static int proc_match(unsigned int len, const char *name, struct proc_dir_entry *de)

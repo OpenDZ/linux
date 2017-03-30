@@ -111,6 +111,9 @@ static int proc_show_options(struct seq_file *seq, struct dentry *root)
 	if (pid->hide_pid != HIDEPID_OFF)
 		seq_printf(seq, ",hidepid=%u", pid->hide_pid);
 
+	if (proc_fs_get_unshare(fs_info) == PROC_FS_V2)
+		seq_printf(seq, ",unshare");
+
 	return 0;
 }
 

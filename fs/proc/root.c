@@ -27,14 +27,51 @@
 #include "internal.h"
 
 enum {
-	Opt_gid, Opt_hidepid, Opt_err,
+	Opt_gid, Opt_hidepid, Opt_unshare, Opt_err,
 };
 
 static const match_table_t tokens = {
 	{Opt_hidepid, "hidepid=%u"},
 	{Opt_gid, "gid=%u"},
+	{Opt_unshare, "unshare"},
 	{Opt_err, NULL},
 };
+
+/* We only parse 'unshare' option here */
+int proc_parse_early_options(char *options, struct proc_fs_info *fs_info)
+{
+	char *p, *opts, *orig;
+	substring_t args[MAX_OPT_ARGS];
+
+	if (!options)
+		return 0;
+
+	opts = kstrdup(options, GFP_KERNEL);
+	if (!opts)
+		return -ENOMEM;
+
+	orig = opts;
+
+	while ((p = strsep(&opts, ",")) != NULL) {
+		int token;
+
+		if (!*p)
+			continue;
+
+		token = match_token(p, tokens, args);
+		switch (token) {
+		case Opt_unshare:
+			pr_info("proc: mounting a new procfs instance ");
+			proc_fs_set_unshare(fs_info, PROC_FS_V2);
+			break;
+		default:
+			break;
+		}
+	}
+
+	kfree(orig);
+	return 0;
+}
 
 int proc_parse_options(char *options, struct proc_fs_info *fs_info)
 {
@@ -70,6 +107,8 @@ int proc_parse_options(char *options, struct proc_fs_info *fs_info)
 			}
 			proc_fs_set_hide_pid(fs_info, option);
 			break;
+		case Opt_unshare:
+			break;
 		default:
 			pr_err("proc: unrecognized mount option \"%s\" "
 			       "or missing value\n", p);
@@ -82,9 +121,19 @@ int proc_parse_options(char *options, struct proc_fs_info *fs_info)
 
 int proc_remount(struct super_block *sb, int *flags, char *data)
 {
+	int error, version;
 	struct proc_fs_info *fs_info = proc_sb(sb);
 
+	version = proc_fs_get_unshare(fs_info);
+
 	sync_filesystem(sb);
+
+	if (version == PROC_FS_V2) {
+		error = proc_parse_early_options(data, fs_info);
+		if (error < 0)
+			return error;
+	}
+
 	return !proc_parse_options(data, fs_info);
 }
 
@@ -122,15 +171,21 @@ static struct dentry *proc_mount(struct file_system_type *fs_type,
 	if (!fs_info)
 		return ERR_PTR(-ENOMEM);
 
+	/* Set it as early as possible */
+	proc_fs_set_unshare(fs_info, PROC_FS_V1);
+
 	if (flags & MS_KERNMOUNT) {
 		ns = data;
 		data = NULL;
 	} else {
+		error = proc_parse_early_options(data, fs_info);
+		if (error < 0)
+			goto error_fs_info;
+
 		ns = task_active_pid_ns(current);
 	}
 
 	fs_info->pid_ns = ns;
-	fs_info->version = PROC_FS_V1;
 	fs_info->hide_pid = HIDEPID_OFF;
 	fs_info->pid_gid = GLOBAL_ROOT_GID;
 	refcount_set(&fs_info->users, 1);

@@ -222,6 +222,7 @@ error:
 
 static void proc_destroy_sb(struct super_block *sb)
 {
+	int version;
 	struct proc_fs_info *fs_info = proc_sb(sb);
 	struct pid_namespace *ns = (struct pid_namespace *)fs_info->pid_ns;
 
@@ -229,6 +230,15 @@ static void proc_destroy_sb(struct super_block *sb)
 		dput(ns->proc_self);
 	if (ns->proc_thread_self)
 		dput(ns->proc_thread_self);
+
+	version = proc_fs_get_unshare(fs_info);
+
+	if (version == PROC_FS_V2) {
+		pidns_procfs_lock(ns);
+		list_del(&fs_info->pidns_entry);
+		pidns_procfs_unlock(ns);
+	}
+
 	kill_anon_super(sb);
 	put_pid_ns(ns);
 	kfree(fs_info);
@@ -352,6 +362,9 @@ int pid_ns_prepare_proc(struct pid_namespace *ns)
 		return PTR_ERR(mnt);
 
 	ns->proc_mnt = mnt;
+	init_rwsem(&ns->rw_procfs_mnts);
+	INIT_LIST_HEAD(&ns->procfs_mounts);
+
 	return 0;
 }
 

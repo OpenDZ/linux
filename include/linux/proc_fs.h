@@ -15,7 +15,12 @@ enum {
 
 struct proc_fs_info {
 	refcount_t users;
+
+	struct super_block *sb;
 	struct pid_namespace *pid_ns;
+
+	struct list_head pidns_entry; /* Node in procfs_mounts of a pidns */
+
 	kgid_t pid_gid;
 	int hide_pid;
 	int version;

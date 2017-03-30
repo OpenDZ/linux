@@ -478,10 +478,19 @@ struct inode *proc_get_inode(struct super_block *sb, struct proc_dir_entry *de)
 int proc_fill_super(struct super_block *s, void *data, int silent)
 {
 	struct proc_fs_info *fs_info = proc_sb(s);
+	struct pid_namespace *ns = get_pid_ns(fs_info->pid_ns);
 	struct inode *root_inode;
-	int ret;
+	int ret, version;
 
-	get_pid_ns(fs_info->pid_ns);
+	fs_info->sb = s;
+
+	version = proc_fs_get_unshare(fs_info);
+
+	if (version == PROC_FS_V2) {
+		pidns_procfs_lock(ns);
+		list_add_tail(&fs_info->pidns_entry, &ns->procfs_mounts);
+		pidns_procfs_unlock(ns);
+	}
 
 	if (!proc_parse_options(data, fs_info))
 		return -EINVAL;

@@ -1069,6 +1069,19 @@ int cap_mmap_file(struct file *file, unsigned long reqprot,
 	return 0;
 }
 
+/**
+ * cap_kernel_module_request - Determin whether a module auto-load is permitted
+ * @kmod_name: The module name
+ *
+ * Determine whether a module should be automatically loaded due to a request
+ * by the current task. Returns 0 if the module request should be allowed
+ * -EPERM if not.
+ */
+int cap_kernel_module_request(char *kmod_name)
+{
+	return modules_autoload_sysctl_perm(kmod_name);
+}
+
 #ifdef CONFIG_SECURITY
 
 struct security_hook_list capability_hooks[] __lsm_ro_after_init = {
@@ -1090,6 +1103,7 @@ struct security_hook_list capability_hooks[] __lsm_ro_after_init = {
 	LSM_HOOK_INIT(task_setioprio, cap_task_setioprio),
 	LSM_HOOK_INIT(task_setnice, cap_task_setnice),
 	LSM_HOOK_INIT(vm_enough_memory, cap_vm_enough_memory),
+	LSM_HOOK_INIT(kernel_module_request, cap_kernel_module_request),
 };
 
 void __init capability_add_hooks(void)

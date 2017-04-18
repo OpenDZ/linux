@@ -282,6 +282,8 @@ module_param(sig_enforce, bool_enable_only, 0644);
 
 /* Block module loading/unloading? */
 int modules_disabled = 0;
+int modules_autoload = MODULES_AUTOLOAD_ALLOWED;
+const int modules_autoload_max = MODULES_AUTOLOAD_DISABLED;
 core_param(nomodule, modules_disabled, bint, 0);
 
 /* Waiting for a module to finish initializing? */
@@ -4295,6 +4297,33 @@ struct module *__module_text_address(unsigned long addr)
 	return mod;
 }
 EXPORT_SYMBOL_GPL(__module_text_address);
+
+/*
+ * Return 0 if CAP_SYS_MODULE or if CAP_NET_ADMIN and the module is
+ * a netdev-%s module. Otherwise -EPERM is returned.
+ */
+static int modules_autoload_privileged_access(const char *name)
+{
+	int ret = -EPERM;
+
+	if (capable(CAP_SYS_MODULE))
+		ret = 0;
+	else if (name && strstr(name, "netdev-") && capable(CAP_NET_ADMIN))
+		ret = 0;
+
+	return ret;
+}
+
+int modules_autoload_sysctl_perm(char *kmod_name)
+{
+	if (modules_autoload == MODULES_AUTOLOAD_ALLOWED)
+		return 0;
+	else if (modules_autoload == MODULES_AUTOLOAD_PRIVILEGED)
+		return modules_autoload_privileged_access(kmod_name);
+
+	/* MODULES_AUTOLOAD_DISABLED */
+	return -EPERM;
+}
 
 /* Don't grab lock, we're oopsing. */
 void print_modules(void)

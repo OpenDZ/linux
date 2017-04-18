@@ -4314,15 +4314,23 @@ static int modules_autoload_privileged_access(const char *name)
 	return ret;
 }
 
-int modules_autoload_sysctl_perm(char *kmod_name)
+int task_modules_autoload_perm(char *kmod_name)
 {
-	if (modules_autoload == MODULES_AUTOLOAD_ALLOWED)
-		return 0;
-	else if (modules_autoload == MODULES_AUTOLOAD_PRIVILEGED)
-		return modules_autoload_privileged_access(kmod_name);
+	int ret;
+	int autoload = max(modules_autoload, (int) current->modules_autoload);
 
-	/* MODULES_AUTOLOAD_DISABLED */
-	return -EPERM;
+	switch (autoload) {
+	case MODULES_AUTOLOAD_ALLOWED:
+		return 0;
+	case MODULES_AUTOLOAD_PRIVILEGED:
+		return modules_autoload_privileged_access(kmod_name);
+	case MODULES_AUTOLOAD_DISABLED:
+		return -EPERM;
+	default:
+		ret = -EINVAL;
+	}
+
+	return ret;
 }
 
 /* Don't grab lock, we're oopsing. */

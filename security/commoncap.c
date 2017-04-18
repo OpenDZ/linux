@@ -1079,7 +1079,16 @@ int cap_mmap_file(struct file *file, unsigned long reqprot,
  */
 int cap_kernel_module_request(char *kmod_name)
 {
-	return modules_autoload_sysctl_perm(kmod_name);
+	int ret;
+	char comm[sizeof(current->comm)];
+
+	ret = modules_autoload_sysctl_perm(kmod_name);
+	if (ret < 0)
+		pr_notice_ratelimited(
+			"Automatic module loading of %.64s by \"%s\"[%d] was denied\n",
+			kmod_name, get_task_comm(comm, current), current->pid);
+
+	return ret;
 }
 
 #ifdef CONFIG_SECURITY

@@ -18,6 +18,11 @@ enum { /* definitions for 'hidepid' mount option */
 	HIDEPID_INVISIBLE = 2,
 };
 
+enum { /* definitions for 'pids' mount option */
+	PIDS_ALL	= 0,
+	PIDS_PTRACEABLE	= 1,
+};
+
 struct proc_fs_info {
 	struct pid_namespace *pid_ns;
 	struct dentry *proc_self; /* For /proc/self/ */
@@ -25,6 +30,7 @@ struct proc_fs_info {
 	bool newinstance; /* Flag for new separated instances */
 	kgid_t pid_gid;
 	int hide_pid;
+	int pids;
 };
 
 #ifdef CONFIG_PROC_FS
@@ -49,6 +55,16 @@ static inline void proc_fs_set_newinstance(struct proc_fs_info *fs_info, bool va
 	fs_info->newinstance = value;
 }
 
+static inline int proc_fs_set_pids(struct proc_fs_info *fs_info, int value)
+{
+	if (value != PIDS_ALL &&
+	    (value != PIDS_PTRACEABLE || !fs_info->newinstance))
+		return -EINVAL;
+
+	fs_info->pids = value;
+	return 0;
+}
+
 static inline int proc_fs_hide_pid(struct proc_fs_info *fs_info)
 {
 	return fs_info->hide_pid;
@@ -62,6 +78,11 @@ static inline kgid_t proc_fs_pid_gid(struct proc_fs_info *fs_info)
 static inline bool proc_fs_newinstance(struct proc_fs_info *fs_info)
 {
 	return fs_info->newinstance;
+}
+
+static inline int proc_fs_pids(struct proc_fs_info *fs_info)
+{
+	return fs_info->pids;
 }
 
 extern void proc_root_init(void);
@@ -112,6 +133,10 @@ static inline void proc_fs_set_newinstance(struct proc_fs_info *fs_info, bool va
 {
 }
 
+static inline int proc_fs_set_pids(struct proc_fs_info *fs_info, int value)
+{
+}
+
 static inline int proc_fs_hide_pid(struct proc_fs_info *fs_info)
 {
 	return 0;
@@ -125,6 +150,11 @@ extern kgid_t proc_fs_pid_gid(struct proc_fs_info *fs_info)
 static inline bool proc_fs_newinstance(struct proc_fs_info *fs_info)
 {
 	return false;
+}
+
+static inline int proc_fs_pids(struct proc_fs_info *fs_info)
+{
+	return 0;
 }
 
 extern inline struct proc_fs_info *proc_sb(struct super_block *sb) { return NULL;}

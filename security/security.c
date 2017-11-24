@@ -1015,9 +1015,11 @@ int security_kernel_create_files_as(struct cred *new, struct inode *inode)
 	return call_int_hook(kernel_create_files_as, 0, new, inode);
 }
 
-int security_kernel_module_request(char *kmod_name)
+int security_kernel_module_request(char *kmod_name, int required_cap,
+				   const char *prefix)
 {
-	return call_int_hook(kernel_module_request, 0, kmod_name);
+	return call_int_hook(kernel_module_request, 0, kmod_name,
+			     required_cap, prefix);
 }
 
 int security_kernel_read_file(struct file *file, enum kernel_read_file_id id)

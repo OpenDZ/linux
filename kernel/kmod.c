@@ -109,6 +109,8 @@ out:
 /**
  * __request_module - try to load a kernel module
  * @wait: wait (or not) for the operation to complete
+ * @required_cap: required capability to load the module
+ * @prefix: module prefix if any otherwise NULL
  * @fmt: printf style format string for the name of the module
  * @...: arguments as specified in the format string
  *
@@ -119,14 +121,20 @@ out:
  * must check that the service they requested is now available not blindly
  * invoke it.
  *
- * If module auto-loading support is disabled then this function
- * becomes a no-operation.
+ * If "required_cap" is positive, The security subsystem will trust the caller
+ * that if it has "required_cap" then it may allow to load some modules that
+ * have a specific alias.
+ *
+ * If module auto-loading support is disabled by clearing the modprobe path
+ * then this function becomes a no-operation.
  */
-int __request_module(bool wait, const char *fmt, ...)
+int __request_module(bool wait, int required_cap,
+		     const char *prefix, const char *fmt, ...)
 {
 	va_list args;
 	char module_name[MODULE_NAME_LEN];
 	int ret;
+	int len = 0;
 
 	/*
 	 * We don't allow synchronous module loading from async.  Module
@@ -139,13 +147,22 @@ int __request_module(bool wait, const char *fmt, ...)
 	if (!modprobe_path[0])
 		return 0;
 
+	/*
+	 * Lets attach the prefix to the module name
+	 */
+	if (prefix != NULL && *prefix != '\0') {
+		len += snprintf(module_name, MODULE_NAME_LEN, "%s-", prefix);
+		if (len >= MODULE_NAME_LEN)
+			return -ENAMETOOLONG;
+	}
+
 	va_start(args, fmt);
-	ret = vsnprintf(module_name, MODULE_NAME_LEN, fmt, args);
+	ret = vsnprintf(module_name + len, MODULE_NAME_LEN - len, fmt, args);
 	va_end(args);
-	if (ret >= MODULE_NAME_LEN)
+	if (ret >= MODULE_NAME_LEN - len)
 		return -ENAMETOOLONG;
 
-	ret = security_kernel_module_request(module_name);
+	ret = security_kernel_module_request(module_name, required_cap, prefix);
 	if (ret)
 		return ret;
 

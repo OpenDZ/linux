@@ -3888,7 +3888,8 @@ static int selinux_kernel_create_files_as(struct cred *new, struct inode *inode)
 	return ret;
 }
 
-static int selinux_kernel_module_request(char *kmod_name)
+static int selinux_kernel_module_request(char *kmod_name, int required_cap,
+					 const char *prefix)
 {
 	struct common_audit_data ad;
 

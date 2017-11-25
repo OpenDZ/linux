@@ -497,6 +497,10 @@ bool __is_module_percpu_address(unsigned long addr, unsigned long *can_addr);
 bool is_module_percpu_address(unsigned long addr);
 bool is_module_text_address(unsigned long addr);
 
+/* Determine whether a module auto-load operation is permitted. */
+int may_autoload_module(char *kmod_name, int required_cap,
+			const char *kmod_prefix);
+
 static inline bool within_module_core(unsigned long addr,
 				      const struct module *mod)
 {
@@ -642,6 +646,12 @@ static inline bool is_livepatch_module(struct module *mod)
 bool is_module_sig_enforced(void);
 
 #else /* !CONFIG_MODULES... */
+
+static inline int may_autoload_module(char *kmod_name, int required_cap,
+				      const char *kmod_prefix)
+{
+	return -ENOSYS;
+}
 
 static inline struct module *__module_address(unsigned long addr)
 {

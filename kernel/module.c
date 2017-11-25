@@ -4314,6 +4314,29 @@ struct module *__module_text_address(unsigned long addr)
 }
 EXPORT_SYMBOL_GPL(__module_text_address);
 
+/**
+ * may_autoload_module - Determine whether a module auto-load operation
+ * is permitted
+ * @kmod_name: The module name
+ * @required_cap: if positive, may allow to auto-load the module if this
+ *	capability is set
+ * @kmod_prefix: The module prefix if any, otherwise NULL
+ *
+ * Determine whether a module auto-load operation is allowed or not.
+ *
+ * This allows to have more control on automatic module loading, and align it
+ * with explicit load/unload module operations. The kernel contains several
+ * modules, some of them are not updated often and may contain bugs and
+ * vulnerabilities.
+ *
+ * Returns 0 if the module request is allowed or -EPERM if not.
+ */
+int may_autoload_module(char *kmod_name, int required_cap,
+			const char *kmod_prefix)
+{
+	return 0;
+}
+
 /* Don't grab lock, we're oopsing. */
 void print_modules(void)
 {

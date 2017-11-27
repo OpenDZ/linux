@@ -207,6 +207,11 @@ static int proc_taint(struct ctl_table *table, int write,
 			       void __user *buffer, size_t *lenp, loff_t *ppos);
 #endif
 
+#ifdef CONFIG_MODULES
+static int modules_autoload_dointvec_minmax(struct ctl_table *table, int write,
+				void __user *buffer, size_t *lenp, loff_t *ppos);
+#endif
+
 #ifdef CONFIG_PRINTK
 static int proc_dointvec_minmax_sysadmin(struct ctl_table *table, int write,
 				void __user *buffer, size_t *lenp, loff_t *ppos);
@@ -682,6 +687,15 @@ static struct ctl_table kern_table[] = {
 		.proc_handler	= proc_dointvec_minmax,
 		.extra1		= &one,
 		.extra2		= &one,
+	},
+	{
+		.procname	= "modules_autoload_mode",
+		.data		= &modules_autoload_mode,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= modules_autoload_dointvec_minmax,
+		.extra1		= &zero,
+		.extra2		= (void *)&modules_autoload_max,
 	},
 #endif
 #ifdef CONFIG_UEVENT_HELPER
@@ -2500,6 +2514,20 @@ static int proc_dointvec_minmax_sysadmin(struct ctl_table *table, int write,
 				void __user *buffer, size_t *lenp, loff_t *ppos)
 {
 	if (write && !capable(CAP_SYS_ADMIN))
+		return -EPERM;
+
+	return proc_dointvec_minmax(table, write, buffer, lenp, ppos);
+}
+#endif
+
+#ifdef CONFIG_MODULES
+static int modules_autoload_dointvec_minmax(struct ctl_table *table, int write,
+				void __user *buffer, size_t *lenp, loff_t *ppos)
+{
+	/*
+	 * Only CAP_SYS_MODULE in init user namespace are allowed to change this
+	 */
+	if (write && !capable(CAP_SYS_MODULE))
 		return -EPERM;
 
 	return proc_dointvec_minmax(table, write, buffer, lenp, ppos);

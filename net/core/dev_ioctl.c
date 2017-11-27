@@ -382,8 +382,10 @@ void dev_load(struct net *net, const char *name)
 	rcu_read_unlock();
 
 	no_module = !dev;
+	/* "netdev-%s" modules are allowed if CAP_NET_ADMIN is set */
 	if (no_module && capable(CAP_NET_ADMIN))
-		no_module = request_module("netdev-%s", name);
+		no_module = request_module_cap(CAP_NET_ADMIN, "netdev",
+					       "%s", name);
 	if (no_module && capable(CAP_SYS_MODULE))
 		request_module("%s", name);
 }

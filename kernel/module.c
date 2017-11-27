@@ -290,6 +290,8 @@ EXPORT_SYMBOL(is_module_sig_enforced);
 
 /* Block module loading/unloading? */
 int modules_disabled = 0;
+int modules_autoload_mode = MODULES_AUTOLOAD_ALLOWED;
+const int modules_autoload_max = MODULES_AUTOLOAD_DISABLED;
 core_param(nomodule, modules_disabled, bint, 0);
 
 /* Waiting for a module to finish initializing? */
@@ -4355,12 +4357,89 @@ EXPORT_SYMBOL_GPL(__module_text_address);
  * modules, some of them are not updated often and may contain bugs and
  * vulnerabilities.
  *
+ * If "@required_cap" is positive and a valid capability then it is checked
+ * together with the "@kmod_prefix" to either allow or deny automatic module
+ * loading.
+ *
+ * However even if the caller has the required capability, the operation can
+ * still be denied due to the global "modules_autoload_mode" sysctl mode. Unless
+ * set by enduser, the operation is always allowed which is the default.
+ *
+ * The permission check is performed in this order:
+ * 1) If the global sysctl "modules_autoload_mode" is set to 'disabled', then
+ *    operation is denied.
+ *
+ * 2) If the global sysctl "modules_autoload_mode" is set to 'privileged', then:
+ *
+ *   2.1) If "@required_cap" is positive and "@kmod_prefix" is set, then
+ *   if the caller has the capability, the operation is allowed.
+ *
+ *   2.2) If "@required_cap" is positive and "@kmod_prefix" is NULL, then we
+ *   fallback to check if caller has CAP_SYS_MODULE, if so, operation is
+ *   allowed.
+ *
+ *   2.3) If caller passes "@required_cap" as a negative then we fallback to
+ *   check if caller has CAP_SYS_MODULE, if so, operation is allowed.
+ *
+ *   We require capabilities to autoload modules here, and CAP_SYS_MODULE here is
+ *   the default.
+ *
+ *   2.4) Otherwise operation is denied.
+ *
+ * 3) If the global sysctl "modules_autoload_mode" is set to 'allowed' which is
+ *    the default, then:
+ *
+ *   3.1) If "@required_cap" is positive and "@kmod_prefix" is set, we check if
+ *   caller has the capability, if so, operation is allowed.
+ *   In this case the calling subsystem requires the capability to be set before
+ *   allowing modules autoload operations and we have to honor that.
+ *
+ *   3.2) If "@required_cap" is positive and "@kmod_prefix" is NULL, then we
+ *   fallback to check if caller has CAP_SYS_MODULE, if so, operation is
+ *   allowed.
+ *
+ *   3.3) If caller passes "@required_cap" as a negative then operation is
+ *   allowed. This is the most common case as it is used now by
+ *   request_module() function.
+ *
+ *   3.4) Otherwise operation is denied.
+ *
  * Returns 0 if the module request is allowed or -EPERM if not.
  */
 int may_autoload_module(char *kmod_name, int required_cap,
 			const char *kmod_prefix)
 {
-	return 0;
+	int module_require_cap = CAP_SYS_MODULE;
+	unsigned int autoload = modules_autoload_mode;
+
+	/* Short-cut for most use cases where kmod auto-loading is allowed */
+	if (autoload == MODULES_AUTOLOAD_ALLOWED && required_cap < 0)
+		return 0;
+
+	/* If autoload is disabled then fail here */
+	if (autoload == MODULES_AUTOLOAD_DISABLED)
+		return -EPERM;
+
+	/* If caller requires privileges */
+	if (required_cap > 0) {
+		/*
+		 * If '@kmod_prefix' is set then use the '@required_cap'.
+		 * This allows to cover 'netdev-%s' alias modules and others
+		 * with their corresponding capability
+		 */
+		if (kmod_prefix != NULL && *kmod_prefix != '\0')
+			module_require_cap = required_cap;
+	}
+
+	/*
+	 * We require privileges if '@required_cap' was set or if the
+	 * 'modules_autoload_mode' is set to 'privileged' mode.
+	 */
+	if (capable(module_require_cap))
+		return 0;
+
+	/* Otherwise fail */
+	return -EPERM;
 }
 
 /* Don't grab lock, we're oopsing. */

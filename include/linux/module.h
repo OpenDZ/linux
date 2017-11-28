@@ -13,6 +13,7 @@
 #include <linux/kmod.h>
 #include <linux/init.h>
 #include <linux/elf.h>
+#include <linux/sched.h>
 #include <linux/stringify.h>
 #include <linux/kobject.h>
 #include <linux/moduleparam.h>
@@ -510,6 +511,15 @@ bool is_module_text_address(unsigned long addr);
 int may_autoload_module(char *kmod_name, int required_cap,
 			const char *kmod_prefix);
 
+/* Set 'modules_autoload_mode' of current task */
+int task_set_modules_autoload_mode(unsigned long value);
+
+/* Read task's 'modules_autoload_mode' */
+static inline int task_modules_autoload_mode(struct task_struct *task)
+{
+	return task->modules_autoload_mode;
+}
+
 static inline bool within_module_core(unsigned long addr,
 				      const struct module *mod)
 {
@@ -658,6 +668,16 @@ bool is_module_sig_enforced(void);
 
 static inline int may_autoload_module(char *kmod_name, int required_cap,
 				      const char *kmod_prefix)
+{
+	return -ENOSYS;
+}
+
+static inline int task_set_modules_autoload_mode(unsigned long value)
+{
+	return -ENOSYS;
+}
+
+static inline int task_modules_autoload_mode(struct task_struct *task)
 {
 	return -ENOSYS;
 }

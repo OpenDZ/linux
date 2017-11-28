@@ -207,4 +207,12 @@ struct prctl_mm_map {
 # define PR_SVE_VL_LEN_MASK		0xffff
 # define PR_SVE_VL_INHERIT		(1 << 17) /* inherit across exec */
 
+/*
+ * Control the per-task modules auto-load mode
+ *
+ * See Documentation/prctl/modules_autoload_mode.txt for more details.
+ */
+#define PR_SET_MODULES_AUTOLOAD_MODE	52
+#define PR_GET_MODULES_AUTOLOAD_MODE	53
+
 #endif /* _LINUX_PRCTL_H */

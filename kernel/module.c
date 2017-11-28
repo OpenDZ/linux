@@ -4319,6 +4319,7 @@ EXPORT_SYMBOL_GPL(__module_text_address);
 /**
  * may_autoload_module - Determine whether a module auto-load operation
  * is permitted
+ *
  * @kmod_name: The module name
  * @required_cap: if positive, may allow to auto-load the module if this
  *	capability is set
@@ -4336,47 +4337,51 @@ EXPORT_SYMBOL_GPL(__module_text_address);
  * loading.
  *
  * However even if the caller has the required capability, the operation can
- * still be denied due to the global "modules_autoload_mode" sysctl mode. Unless
- * set by enduser, the operation is always allowed which is the default.
+ * still be denied due to the per-task "modules_autoload_mode" mode and the
+ * global "modules_autoload_mode" sysctl one. Unless set by enduser, the
+ * operation is always allowed which is the default.
  *
  * The permission check is performed in this order:
- * 1) If the global sysctl "modules_autoload_mode" is set to 'disabled', then
- *    operation is denied.
+ * 1) We calculate the strict mode of both:
+ *    per-task 'modules_autoload_mode' and global sysctl 'modules_autoload_mode'
  *
- * 2) If the global sysctl "modules_autoload_mode" is set to 'privileged', then:
+ * We follow up with the result mode as "modules_autoload_mode":
  *
- *   2.1) If "@required_cap" is positive and "@kmod_prefix" is set, then
+ * 2) If "modules_autoload_mode" is set to 'disabled', then operation is denied.
+ *
+ * 3) If "modules_autoload_mode" is set to 'privileged', then:
+ *
+ *   3.1) If "@required_cap" is positive and "@kmod_prefix" is set, then
  *   if the caller has the capability, the operation is allowed.
- *
- *   2.2) If "@required_cap" is positive and "@kmod_prefix" is NULL, then we
- *   fallback to check if caller has CAP_SYS_MODULE, if so, operation is
- *   allowed.
- *
- *   2.3) If caller passes "@required_cap" as a negative then we fallback to
- *   check if caller has CAP_SYS_MODULE, if so, operation is allowed.
- *
- *   We require capabilities to autoload modules here, and CAP_SYS_MODULE here is
- *   the default.
- *
- *   2.4) Otherwise operation is denied.
- *
- * 3) If the global sysctl "modules_autoload_mode" is set to 'allowed' which is
- *    the default, then:
- *
- *   3.1) If "@required_cap" is positive and "@kmod_prefix" is set, we check if
- *   caller has the capability, if so, operation is allowed.
- *   In this case the calling subsystem requires the capability to be set before
- *   allowing modules autoload operations and we have to honor that.
  *
  *   3.2) If "@required_cap" is positive and "@kmod_prefix" is NULL, then we
  *   fallback to check if caller has CAP_SYS_MODULE, if so, operation is
  *   allowed.
  *
- *   3.3) If caller passes "@required_cap" as a negative then operation is
+ *   3.3) If caller passes "@required_cap" as a negative then we fallback to
+ *   check if caller has CAP_SYS_MODULE, if so, operation is allowed.
+ *
+ *   We require capabilities to autoload modules here, and CAP_SYS_MODULE here is
+ *   the default.
+ *
+ *   3.4) Otherwise operation is denied.
+ *
+ * 4) If "modules_autoload_mode" is set to 'allowed' which is the default, then:
+ *
+ *   4.1) If "@required_cap" is positive and "@kmod_prefix" is set, we check if
+ *   caller has the capability, if so, operation is allowed.
+ *   In this case the calling subsystem requires the capability to be set before
+ *   allowing modules autoload operations and we have to honor that.
+ *
+ *   4.2) If "@required_cap" is positive and "@kmod_prefix" is NULL, then we
+ *   fallback to check if caller has CAP_SYS_MODULE, if so, operation is
+ *   allowed.
+ *
+ *   4.3) If caller passes "@required_cap" as a negative then operation is
  *   allowed. This is the most common case as it is used now by
  *   request_module() function.
  *
- *   3.4) Otherwise operation is denied.
+ *   4.4) Otherwise operation is denied.
  *
  * Returns 0 if the module request is allowed or -EPERM if not.
  */
@@ -4384,7 +4389,8 @@ int may_autoload_module(char *kmod_name, int required_cap,
 			const char *kmod_prefix)
 {
 	int module_require_cap = CAP_SYS_MODULE;
-	unsigned int autoload = modules_autoload_mode;
+	unsigned int autoload = max_t(unsigned int, modules_autoload_mode,
+				      current->modules_autoload_mode);
 
 	/* Short-cut for most use cases where kmod auto-loading is allowed */
 	if (autoload == MODULES_AUTOLOAD_ALLOWED && required_cap < 0)
@@ -4414,6 +4420,51 @@ int may_autoload_module(char *kmod_name, int required_cap,
 
 	/* Otherwise fail */
 	return -EPERM;
+}
+
+/**
+ * task_set_modules_autoload_mode - Set per-task modules auto-load mode
+ * @value: Value to set "modules_autoload_mode" of current task
+ *
+ * Set current task "modules_autoload_mode". The task has to have
+ * CAP_SYS_ADMIN in its namespace or be running with no_new_privs. This
+ * avoids scenarios where unprivileged tasks can affect the behaviour of
+ * privilged children by restricting module or kernel features.
+ *
+ * The task's "modules_autoload_mode" may only be increased, never decreased.
+ *
+ * Returns 0 on success, -EINVAL if @value is not valid, -EACCES if task does
+ * not have CAP_SYS_ADMIN in its namespace or is not running with no_new_privs,
+ * and finally -EPERM if @value is less strict than current task
+ * "modules_autoload_mode".
+ *
+ */
+int task_set_modules_autoload_mode(unsigned long value)
+{
+	if (value > MODULES_AUTOLOAD_DISABLED)
+		return -EINVAL;
+
+	/*
+	 * To set task "modules_autoload_mode" requires that the task has
+	 * CAP_SYS_ADMIN in its namespace or be running with no_new_privs.
+	 * This avoids scenarios where unprivileged tasks can affect the
+	 * behaviour of privileged children by restricting module features.
+	 */
+	if (!task_no_new_privs(current) &&
+	    security_capable_noaudit(current_cred(), current_user_ns(),
+				     CAP_SYS_ADMIN) != 0)
+		return -EACCES;
+
+	/*
+	 * The "modules_autoload_mode" may only be increased, never decreased,
+	 * ensuring that once applied, processes can never relax their settings.
+	 */
+	if (current->modules_autoload_mode > value)
+		return -EPERM;
+	else if (current->modules_autoload_mode < value)
+		current->modules_autoload_mode = value;
+
+	return 0;
 }
 
 /* Don't grab lock, we're oopsing. */

@@ -211,4 +211,12 @@ struct prctl_mm_map {
 #define PR_SET_PDEATHSIG_PROC		48
 #define PR_GET_PDEATHSIG_PROC		49
 
+/*
+ * Control the per-task modules auto-load mode
+ *
+ * See Documentation/prctl/modules_autoload_mode.txt for more details.
+ */
+#define PR_SET_MODULES_AUTOLOAD_MODE	52
+#define PR_GET_MODULES_AUTOLOAD_MODE	53
+
 #endif /* _LINUX_PRCTL_H */
